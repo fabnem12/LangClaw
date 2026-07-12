@@ -4,6 +4,9 @@
 # Generated config (contains secrets)
 openclaw.json
 
+# Personal persona files (local only, never committed)
+personas/
+
 # Node
 node_modules/
 

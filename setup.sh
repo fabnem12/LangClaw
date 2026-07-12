@@ -173,6 +173,37 @@ cp "$SCRIPT_DIR/skills/conversation-partner/SKILL.md" "$OPENCLAW_DIR/workspace-r
 cp "$SCRIPT_DIR/skills/conversation-partner/SKILL.md" "$OPENCLAW_DIR/workspace-german/skills/conversation-partner/SKILL.md"
 info "Copied shared SKILL.md to both workspaces"
 
+# --- Inject personas into SOUL.md ---
+
+inject_persona() {
+  local workspace="$1"
+  local persona_file="$2"
+  local agent_name="$3"
+  local soul_file="$OPENCLAW_DIR/$workspace/SOUL.md"
+
+  if [ -f "$persona_file" ]; then
+    # Create a temp file with the persona content (escaping special chars for sed)
+    local tmp_persona
+    tmp_persona=$(mktemp)
+    # Use awk to avoid sed escaping issues with special characters
+    awk -v persona="$(cat "$persona_file")" '
+      /<!-- PERSONA -->/ { print persona; next }
+      { print }
+    ' "$soul_file" > "$tmp_persona"
+    mv "$tmp_persona" "$soul_file"
+    info "Injected persona into $workspace/SOUL.md"
+  else
+    # Replace marker with warning
+    sed -i 's|<!-- PERSONA -->|<!-- WARNING: '"$persona_file"' not found. Create it to give '"$agent_name"' a rich identity. See docs/creating-personas.md for the format. -->|' "$soul_file"
+    warn "Persona file not found: $persona_file"
+    warn "  $agent_name will work without a personal identity."
+    warn "  Create it following the format in docs/creating-personas.md"
+  fi
+}
+
+inject_persona "workspace-romanian" "$SCRIPT_DIR/personas/ana.md" "Ana"
+inject_persona "workspace-german" "$SCRIPT_DIR/personas/lukas.md" "Lukas"
+
 # Copy generated openclaw.json
 cp "$OUTPUT" "$OPENCLAW_DIR/openclaw.json"
 info "Copied openclaw.json to $OPENCLAW_DIR/"

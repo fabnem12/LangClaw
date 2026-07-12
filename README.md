@@ -24,17 +24,24 @@ Personal AI language learning setup powered by [OpenClaw](https://openclaw.ai). 
 
 ```
 openclaw.json.example     Config template (${VAR} placeholders)
-setup.sh                  Reads .env → generates openclaw.json
+setup.sh                  Reads .env → generates openclaw.json, injects personas
 .env.example              Secrets template (Discord token, API key)
 
+personas/                 Personal identity files (gitignored)
+  ana.md                    Ana's interests, opinions, conversation hooks
+  lukas.md                  Lukas's interests, opinions, conversation hooks
+
 workspace-romanian/       Ana's workspace
-  SOUL.md                   Identity & teaching philosophy
+  SOUL.md                   Identity & teaching philosophy (persona injected at setup)
   AGENTS.md                 Session behavior & tracking rules
   HEARTBEAT.md              Proactive message logic
   MEMORY.md                 Long-term user memory
   skills/conversation-partner/   5 conversation modes + correction strategy
 
 workspace-german/         Lukas's workspace (same structure)
+
+docs/
+  creating-personas.md     Guide to writing your own agent personas
 
 cron-stagger.js           Variable timing via date-hash slot selection
 ```
@@ -82,6 +89,12 @@ Messages vary from day to day using date-hash slot selection (`cron-stagger.js`)
 - [Anthropic Claude](https://console.anthropic.com) — Sonnet 4.6 (default model)
 - [Discord](https://discord.com) — chat interface
 - [ClawHub](https://clawhub.ai) — `@chipagosfinest/language-learning` skill
+
+## Personas
+
+Each agent has a personal identity — interests, opinions, a life outside of tutoring. This is what makes conversations feel real instead of scripted.
+
+Personas live in `personas/` (gitignored, local only) and get injected into the agent's `SOUL.md` during setup. See [docs/creating-personas.md](docs/creating-personas.md) for the full guide on writing your own.
 
 ## License
 

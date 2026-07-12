@@ -1,147 +1,92 @@
 #!/usr/bin/env node
 
 /**
- * cron-stagger.js — Generates staggered cron schedules for LangClaw agents
+ * cron-stagger.js — Cron setup for LangClaw agents
  *
- * This script creates cron job definitions with variable timing.
- * It uses a deterministic date-hash to pick which time slot fires each day,
- * so the same day always gets the same time, but different days vary.
+ * Generates one cron job per language that runs hourly (7-22 CET/CEST).
+ * The agent reads HEARTBEAT.md and checks the current hour to decide
+ * whether and what to send.
  *
  * Usage:
- *   node cron-stagger.js setup          # Print all cron creation commands
- *   node cron-stagger.js check          # Show which slots fire today
- *   node cron-stagger.js trigger <slot> # Evaluate trigger for a slot (returns fire: true/false)
+ *   node cron-stagger.js setup   # Print cron creation commands
+ *   node cron-stagger.js check   # Show current time and active window
  */
 
-const SLOT_WINDOWS = {
-  morning:   { slots: ["6:45", "7:00", "7:15"],       tz: "Europe/Berlin" },
-  midday:    { slots: ["11:30", "12:00", "12:30", "13:00"], tz: "Europe/Berlin" },
-  afternoon: { slots: ["17:30", "18:00", "18:30"],    tz: "Europe/Berlin" },
-  evening:   { slots: ["19:45", "20:00", "20:15"],    tz: "Europe/Berlin" },
-};
+const TZ = "Europe/Berlin";
 
-const MORNING_LANGUAGES = ["Romanian", "German"]; // alternates by day
+const AGENTS = [
+  { id: "romanian", name: "Ana" },
+  { id: "german",   name: "Lukas" },
+];
 
-function dateHash(date) {
-  const str = `${date.getFullYear()}-${date.getMonth()}-${date.getDate()}`;
-  let hash = 0;
-  for (let i = 0; i < str.length; i++) {
-    hash = ((hash << 5) - hash + str.charCodeAt(i)) | 0;
-  }
-  return Math.abs(hash);
-}
-
-function pickSlot(window, date) {
-  const hash = dateHash(date);
-  return window.slots[hash % window.slots.length];
-}
-
-function timeToMinuteOfDay(timeStr) {
-  const [h, m] = timeStr.split(":").map(Number);
-  return h * 60 + m;
-}
-
-function minuteOfDayToDate(minuteOfDay, tz) {
+function getCurrentWindow() {
   const now = new Date();
-  const [year, month, day] = now.toLocaleDateString("en-CA", { timeZone: tz }).split("-").map(Number);
-  const h = Math.floor(minuteOfDay / 60);
-  const m = minuteOfDay % 60;
-  return new Date(year, month - 1, day, h, m, 0, 0);
+  const hour = parseInt(now.toLocaleString("en-GB", { timeZone: TZ, hour: "numeric", hour12: false }));
+
+  if (hour >= 6 && hour < 10) return "morning";
+  if (hour >= 10 && hour < 15) return "midday";
+  if (hour >= 15 && hour < 19) return "afternoon";
+  if (hour >= 19 && hour < 22) return "evening";
+  return "night";
 }
 
-function checkToday() {
+function checkNow() {
   const now = new Date();
-  console.log("=== LangClaw Cron Stagger — Today's Schedule ===\n");
-  console.log(`Date: ${now.toLocaleDateString("en-CA", { timeZone: "Europe/Berlin" })}`);
-  console.log(`Day hash: ${dateHash(now)}\n`);
+  const window = getCurrentWindow();
+  const dateStr = now.toLocaleDateString("en-CA", { timeZone: TZ });
+  const timeStr = now.toLocaleTimeString("en-GB", { timeZone: TZ, hour: "2-digit", minute: "2-digit" });
 
-  for (const [name, window] of Object.entries(SLOT_WINDOWS)) {
-    const slot = pickSlot(window, now);
-    const firingDate = minuteOfDayToDate(timeToMinuteOfDay(slot), window.tz);
-    const isPast = now > firingDate;
-    const langIdx = dateHash(now) % MORNING_LANGUAGES.length;
-    const lang = name === "morning" ? MORNING_LANGUAGES[langIdx] : "(both agents)";
-    console.log(`  ${name.padEnd(12)} → ${slot} CET/CEST  ${isPast ? "(passed)" : "(upcoming)"}  ${lang}`);
+  console.log("=== LangClaw Cron Check ===\n");
+  console.log(`  Date:     ${dateStr}`);
+  console.log(`  Time:     ${timeStr} ${TZ}`);
+  console.log(`  Window:   ${window}`);
+  console.log();
+
+  if (window === "night") {
+    console.log("  No proactive messages during night window (22:00-06:00).");
+  } else {
+    console.log(`  Active window: ${window}`);
+    console.log("  Agent will check HEARTBEAT.md and engagement.json to decide.");
   }
 }
 
 function generateSetup() {
-  const now = new Date();
   console.log("=== LangClaw Cron Setup Commands ===\n");
   console.log("# Run these commands after OpenClaw is installed and configured.\n");
+  console.log("# Each agent gets ONE cron job running hourly from 7-22.");
+  console.log("# The agent reads HEARTBEAT.md to decide what to send each hour.\n");
 
-  for (const [name, window] of Object.entries(SLOT_WINDOWS)) {
-    for (let i = 0; i < window.slots.length; i++) {
-      const [h, m] = window.slots[i].split(":");
-      const cronExpr = `${m} ${h} * * *`;
-      const langIdx = i % MORNING_LANGUAGES.length;
-      const lang = MORNING_LANGUAGES[langIdx];
-
-      console.log(`# --- ${name} slot ${i + 1}: ${window.slots[i]} (${lang}) ---`);
-      console.log(`openclaw cron create "${cronExpr}"`
-        + ` --name "LangClaw ${name} ${window.slots[i]}"`
-        + ` --tz "${window.tz}"`
-        + ` --agent ${lang.toLowerCase() === "romanian" ? "romanian" : "german"}`
-        + ` --session isolated`
-        + ` --message "HEARTBEAT_CHECK: Read HEARTBEAT.md and engagement.json. Decide whether to send a proactive message based on engagement patterns. If consecutiveIgnoredProactive >= 3, reply HEARTBEAT_OK."`
-        + ` --announce`
-        + ` --channel discord`);
-      console.log();
-    }
+  for (const agent of AGENTS) {
+    console.log(`# --- ${agent.name} (${agent.id}) ---`);
+    console.log(`openclaw cron create "0 7-22 * * *"`);
+    console.log(`  --name "LangClaw ${agent.name} hourly"`);
+    console.log(`  --tz "${TZ}"`);
+    console.log(`  --agent ${agent.id}`);
+    console.log(`  --session isolated`);
+    console.log(`  --message "HEARTBEAT_CHECK: Read HEARTBEAT.md. Determine the current hour and map it to a time window. Check progress/engagement.json for engagement state. Follow the rules in HEARTBEAT.md to decide whether to send a proactive message. If you should not send, reply HEARTBEAT_OK."`);
+    console.log(`  --announce`);
+    console.log(`  --to "discord:CHANNEL_ID_FOR_${agent.id.toUpperCase()}"`);
+    console.log();
   }
 
-  console.log("# Note: The trigger script (cron-stagger.js) handles which slot fires each day.");
-  console.log("# Each slot's cron job fires daily, but the trigger script inside the agent's");
-  console.log("# HEARTBEAT.md logic decides whether to actually send the message.");
-  console.log("# Alternatively, use a single cron per window with a trigger script:");
+  console.log("# After creating, replace CHANNEL_ID_FOR_ROMANIAN and CHANNEL_ID_FOR_GERMAN");
+  console.log("# with your actual Discord channel IDs from .env");
   console.log();
-  console.log("# === SIMPLER APPROACH: One cron per window with trigger ===");
-  console.log("# For each window, create ONE cron job that fires at the earliest slot.");
-  console.log("# Add a trigger script that checks if today is the right day.");
-  console.log("# The agent's HEARTBEAT.md handles the engagement logic.");
-}
-
-function evaluateTrigger(slotName) {
-  const window = SLOT_WINDOWS[slotName];
-  if (!window) {
-    console.error(`Unknown slot: ${slotName}. Use: ${Object.keys(SLOT_WINDOWS).join(", ")}`);
-    process.exit(1);
-  }
-  const now = new Date();
-  const todaySlot = pickSlot(window, now);
-  const todayMinute = timeToMinuteOfDay(todaySlot);
-  const nowMinute = now.getHours() * 60 + now.getMinutes();
-  const isClose = Math.abs(nowMinute - todayMinute) <= 15;
-
-  const result = {
-    fire: isClose,
-    date: now.toLocaleDateString("en-CA", { timeZone: "Europe/Berlin" }),
-    slot: todaySlot,
-    nowMinute,
-    todayMinute,
-    message: isClose
-      ? `Firing ${slotName} at ${todaySlot} — slot matches today`
-      : `Skipping — current time is not close to today's slot (${todaySlot})`,
-  };
-
-  console.log(JSON.stringify(result, null, 2));
+  console.log("# To adjust the schedule, modify the cron expression above.");
+  console.log("# Current: every hour from 7:00 to 22:00 (inclusive) in Europe/Berlin.");
 }
 
 // CLI
-const [, , command, arg] = process.argv;
+const [, , command] = process.argv;
 switch (command) {
   case "check":
-    checkToday();
+    checkNow();
     break;
   case "setup":
     generateSetup();
     break;
-  case "trigger":
-    evaluateTrigger(arg);
-    break;
   default:
-    console.log("Usage: node cron-stagger.js <check|setup|trigger <slot>>");
-    console.log("  check                  Show which slots fire today");
-    console.log("  setup                  Print cron creation commands");
-    console.log("  trigger <slot>         Evaluate trigger for a slot (morning|midday|afternoon|evening)");
+    console.log("Usage: node cron-stagger.js <check|setup>");
+    console.log("  check   Show current time and active window");
+    console.log("  setup   Print cron creation commands");
 }

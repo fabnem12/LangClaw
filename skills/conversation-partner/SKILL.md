@@ -5,6 +5,8 @@ name: conversation-partner
 description: Natural conversation practice with inline correction, topic generation, and adaptive engagement for language learning
 ---
 
+> **SHARED SKILL** — This file is used by both the Romanian (Ana) and German (Lukas) agents. Edit here, not in workspace copies. Setup.sh copies this to both workspaces.
+
 ## What This Skill Does
 
 This skill transforms the agent from a structured tutor into a natural conversation partner who teaches through dialogue. It works alongside the `language-learning` skill to add conversational fluency practice.
@@ -81,7 +83,7 @@ After a conversation session (not quick-fire), provide:
 
 ### Based on user interests
 - Ask the user early on what topics interest them
-- Reference past conversations: "Letztes Mal hast du erzählt, dass du ___ magst — was hältst du von...?"
+- Reference past conversations and things they've shared
 - Connect new topics to things they already know
 
 ### Based on progress
@@ -102,7 +104,7 @@ After a conversation session (not quick-fire), provide:
 After each exchange, assess:
 - **Reply length**: Short replies → the user might be busy or bored. Pivot or end.
 - **Questions back**: If the user asks questions, they're engaged. Go deeper.
-- **Language mix**: If they switch to French a lot → the topic might be too hard. Simplify.
+- **Language mix**: If they switch to French/English a lot → the topic might be too hard. Simplify.
 - **Energy**: Match their energy. If they're enthusiastic, be enthusiastic. If they're tired, be gentle.
 
 ### Session pacing
@@ -113,4 +115,3 @@ After each exchange, assess:
 ### When to end a session
 - Don't force length. If the user seems done, wrap up gracefully.
 - End with something positive and a hook for next time.
-- "Das war super! Nächstes Mal probieren wir etwas Neues: [Thema]."

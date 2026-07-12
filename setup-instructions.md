@@ -99,24 +99,26 @@ ANTHROPIC_API_KEY=sk-ant-...
 
 ---
 
-## Step 6: Generate Config & Set Up Workspaces
+## Step 6: Run Setup Script
 
-Run the setup script:
+The setup script reads `.env`, generates `openclaw.json`, creates progress files, and copies workspaces to `~/.openclaw/`. No manual copying needed.
 
 ```bash
 ./setup.sh
 ```
 
-This reads `.env` and generates `openclaw.json` with your actual credentials. The generated file is gitignored and never committed.
+The script will:
+1. Validate all required values in `.env`
+2. Generate `openclaw.json` from the template with your credentials
+3. Create initial progress files (vocabulary, engagement, grammar topics, etc.)
+4. Copy workspaces to `~/.openclaw/`
+5. Copy the shared conversation-partner skill to both workspaces
 
-Then copy the workspaces:
+Generated files (`openclaw.json`, progress directories) are gitignored and never committed.
 
-```bash
-cp -r workspace-romanian ~/.openclaw/workspace-romanian
-cp -r workspace-german ~/.openclaw/workspace-german
-```
+---
 
-Install the ClawHub language-learning skill:
+## Step 7: Install the Language Learning Skill
 
 ```bash
 openclaw skills install @chipagosfinest/language-learning --global
@@ -124,7 +126,7 @@ openclaw skills install @chipagosfinest/language-learning --global
 
 ---
 
-## Step 7: Start OpenClaw
+## Step 8: Start OpenClaw
 
 ```bash
 export ANTHROPIC_API_KEY=$(grep ANTHROPIC_API_KEY .env | cut -d= -f2)
@@ -138,54 +140,65 @@ On first run, OpenClaw will:
 
 ---
 
-## Step 8: Test
+## Step 9: Enable Heartbeats (Required for Proactive Messages)
 
-1. Go to your Discord server
-2. Send a message in `#romanian` — Ana should respond
-3. Send a message in `#german` — Lukas should respond
-4. Wait for a proactive message (they'll reach out based on the cron schedule)
+By default, heartbeats are disabled (`"every": "0m"`). To receive proactive practice messages from Ana and Lukas, edit `~/.openclaw/openclaw.json` and change:
+
+```json
+"heartbeat": { "every": "0m" }
+```
+
+to:
+
+```json
+"heartbeat": { "every": "1h" }
+```
+
+This tells each agent to check HEARTBEAT.md once per hour. The agent then decides based on the time window and engagement state whether to send a message.
 
 ---
 
-## Step 9: Set Up Cron Jobs (Proactive Messages)
+## Step 10: Set Up Cron Jobs (Proactive Messages)
 
-The proactive schedule uses staggered timing. Run the setup script to see the commands:
+Each agent needs one cron job that runs hourly during waking hours. The cron fires every hour from 7:00 to 22:00, and the agent uses HEARTBEAT.md to decide what to send (morning word, vocab quiz, conversation prompt, or review).
+
+See the commands:
 
 ```bash
 node cron-stagger.js setup
 ```
 
-Then create the cron jobs. For each agent, create 4 cron jobs (morning, midday, afternoon, evening):
+Then create the two cron jobs (one per language):
 
 ```bash
-# Example: Romanian morning word at 7:00 AM CET/CEST
-openclaw cron create "0 7 * * *" \
-  --name "Romanian morning word" \
+# Romanian (Ana)
+openclaw cron create "0 7-22 * * *" \
+  --name "LangClaw Ana hourly" \
   --tz "Europe/Berlin" \
   --agent romanian \
   --session isolated \
-  --message "Read HEARTBEAT.md and progress/engagement.json. If consecutiveIgnoredProactive < 3, send a morning word in Romanian. Otherwise, reply HEARTBEAT_OK." \
+  --message "HEARTBEAT_CHECK: Read HEARTBEAT.md. Determine the current hour and map it to a time window. Check progress/engagement.json for engagement state. Follow the rules in HEARTBEAT.md to decide whether to send a proactive message. If you should not send, reply HEARTBEAT_OK." \
   --announce \
-  --channel discord
+  --to "discord:YOUR_ROMANIAN_CHANNEL_ID"
 
-# Example: German morning word at 7:00 AM CET/CEST
-openclaw cron create "0 7 * * *" \
-  --name "German morning word" \
+# German (Lukas)
+openclaw cron create "0 7-22 * * *" \
+  --name "LangClaw Lukas hourly" \
   --tz "Europe/Berlin" \
   --agent german \
   --session isolated \
-  --message "Read HEARTBEAT.md and progress/engagement.json. If consecutiveIgnoredProactive < 3, send a morning word in German. Otherwise, reply HEARTBEAT_OK." \
+  --message "HEARTBEAT_CHECK: Read HEARTBEAT.md. Determine the current hour and map it to a time window. Check progress/engagement.json for engagement state. Follow the rules in HEARTBEAT.md to decide whether to send a proactive message. If you should not send, reply HEARTBEAT_OK." \
   --announce \
-  --channel discord
+  --to "discord:YOUR_GERMAN_CHANNEL_ID"
 ```
 
-Repeat for midday (~12:00), afternoon (~18:00), and evening (~20:00) slots.
+Replace `YOUR_ROMANIAN_CHANNEL_ID` and `YOUR_GERMAN_CHANNEL_ID` with the actual IDs from your `.env` file.
 
-See `cron-stagger.js` for the full list of staggered commands.
+The agent checks the current hour, maps it to a time window (morning/midday/afternoon/evening/night), and decides based on engagement patterns whether to send and what type of message.
 
 ---
 
-## Step 10: Verify Everything Works
+## Step 11: Verify Everything Works
 
 ```bash
 # Check OpenClaw status
@@ -211,7 +224,7 @@ Edit `openclaw.json` → `agents.defaults.model.primary`. Options:
 ### Adjust proactive schedule
 Edit the cron jobs:
 ```bash
-openclaw cron edit <job-id> --cron "30 7 * * *" --tz "Europe/Berlin"
+openclaw cron edit <job-id> --cron "30 7-22 * * *" --tz "Europe/Berlin"
 ```
 
 ### Disable heartbeats
@@ -234,6 +247,7 @@ Replace `Europe/Berlin` with your timezone in cron commands and HEARTBEAT.md.
 
 ### Cron jobs don't fire
 - Verify `cron.enabled: true` in `openclaw.json`
+- Verify `heartbeat.every` is not `"0m"` (see Step 9)
 - Check timezone: `openclaw cron list`
 - Run `openclaw doctor` for diagnostics
 
@@ -243,5 +257,5 @@ Replace `Europe/Berlin` with your timezone in cron commands and HEARTBEAT.md.
 
 ### Token costs too high
 - Switch to a cheaper model (Haiku)
-- Reduce proactive message frequency
+- Reduce proactive message frequency by changing the cron schedule
 - Set shorter timeouts in `openclaw.json`

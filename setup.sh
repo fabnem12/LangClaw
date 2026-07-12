@@ -60,13 +60,23 @@ fi
 
 # --- Generate openclaw.json ---
 
-envsubst < "$TEMPLATE" > "$OUTPUT"
+sed_replace() {
+  local var_name="$1"
+  local var_value="$2"
+  sed -i "s|\${${var_name}}|${var_value}|g" "$OUTPUT"
+}
+
+cp "$TEMPLATE" "$OUTPUT"
+sed_replace "DISCORD_BOT_TOKEN" "$DISCORD_BOT_TOKEN"
+sed_replace "DISCORD_SERVER_ID" "$DISCORD_SERVER_ID"
+sed_replace "DISCORD_ROMANIAN_CHANNEL_ID" "$DISCORD_ROMANIAN_CHANNEL_ID"
+sed_replace "DISCORD_GERMAN_CHANNEL_ID" "$DISCORD_GERMAN_CHANNEL_ID"
 info "Generated openclaw.json"
-echo "    Discord token: ${DISCORD_BOT_TOKEN:0:8}..."
+echo "    Discord token: set ✓"
 echo "    Server ID: $DISCORD_SERVER_ID"
 echo "    Romanian channel: $DISCORD_ROMANIAN_CHANNEL_ID"
 echo "    German channel: $DISCORD_GERMAN_CHANNEL_ID"
-echo "    Anthropic key: ${ANTHROPIC_API_KEY:0:8}..."
+echo "    Anthropic key: set ✓"
 
 # --- Create progress directories ---
 
@@ -134,6 +144,16 @@ Each line: \`YYYY-MM-DD | sessions: N | totalMin: N | activities: [list]\`
 EOF
     info "Created $dir/streak.md"
   fi
+
+  if [ ! -f "$dir/grammar-topics.json" ]; then
+    cat > "$dir/grammar-topics.json" <<EOF
+{
+  "language": "$lang",
+  "topics": []
+}
+EOF
+    info "Created $dir/grammar-topics.json"
+  fi
 }
 
 create_progress "$SCRIPT_DIR/workspace-romanian/progress" "Romanian"
@@ -147,6 +167,11 @@ echo "Copying workspaces to $OPENCLAW_DIR..."
 mkdir -p "$OPENCLAW_DIR"
 cp -rn "$SCRIPT_DIR/workspace-romanian" "$OPENCLAW_DIR/" 2>/dev/null || warn "workspace-romanian already exists, skipping"
 cp -rn "$SCRIPT_DIR/workspace-german" "$OPENCLAW_DIR/" 2>/dev/null || warn "workspace-german already exists, skipping"
+
+# Copy shared skill file to both workspaces
+cp "$SCRIPT_DIR/skills/conversation-partner/SKILL.md" "$OPENCLAW_DIR/workspace-romanian/skills/conversation-partner/SKILL.md"
+cp "$SCRIPT_DIR/skills/conversation-partner/SKILL.md" "$OPENCLAW_DIR/workspace-german/skills/conversation-partner/SKILL.md"
+info "Copied shared SKILL.md to both workspaces"
 
 # Copy generated openclaw.json
 cp "$OUTPUT" "$OPENCLAW_DIR/openclaw.json"

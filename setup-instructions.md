@@ -288,9 +288,8 @@ Edit `~/.openclaw/openclaw.json` → `agents.defaults.model.primary`, or update 
 
 **OpenAI:**
 - `openai/gpt-5.5` (standard, good balance)
-- `openai/gpt-5.6-sol` (flagship, most capable)
-- `openai/gpt-5.6-terra` (balanced, good cost/quality)
-- `openai/gpt-5.6-luna` (fast, lower cost)
+- `openai/gpt-5.5-pro` (more capable, higher cost)
+- `openai/gpt-5.4` (previous gen, cheaper)
 
 ### Adjust proactive schedule
 Edit the cron jobs:

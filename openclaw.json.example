@@ -30,6 +30,22 @@
       }
     ]
   },
+  "bindings": [
+    {
+      "agentId": "romanian",
+      "match": {
+        "channel": "discord",
+        "peer": { "kind": "channel", "id": "${DISCORD_ROMANIAN_CHANNEL_ID}" }
+      }
+    },
+    {
+      "agentId": "german",
+      "match": {
+        "channel": "discord",
+        "peer": { "kind": "channel", "id": "${DISCORD_GERMAN_CHANNEL_ID}" }
+      }
+    }
+  ],
   "channels": {
     "discord": {
       "enabled": true,
@@ -37,12 +53,8 @@
       "guilds": {
         "${DISCORD_SERVER_ID}": {
           "channels": {
-            "${DISCORD_ROMANIAN_CHANNEL_ID}": {
-              "agent": "romanian"
-            },
-            "${DISCORD_GERMAN_CHANNEL_ID}": {
-              "agent": "german"
-            }
+            "${DISCORD_ROMANIAN_CHANNEL_ID}": { "enabled": true },
+            "${DISCORD_GERMAN_CHANNEL_ID}": { "enabled": true }
           }
         }
       }

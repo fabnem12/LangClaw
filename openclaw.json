@@ -1,0 +1,69 @@
+{
+  "gateway": {
+    "mode": "local"
+  },
+  "agents": {
+    "defaults": {
+      "model": { "primary": "anthropic/claude-sonnet-4-6" },
+      "thinkingDefault": "medium",
+      "timeoutSeconds": 1800,
+      "heartbeat": { "every": "0m" }
+    },
+    "list": [
+      {
+        "id": "romanian",
+        "default": false,
+        "workspace": "~/.openclaw/workspace-romanian",
+        "groupChat": {
+          "mentionPatterns": ["@ana", "ana"]
+        },
+        "skills": ["language-learning", "conversation-partner"]
+      },
+      {
+        "id": "german",
+        "default": false,
+        "workspace": "~/.openclaw/workspace-german",
+        "groupChat": {
+          "mentionPatterns": ["@lukas", "lukas"]
+        },
+        "skills": ["language-learning", "conversation-partner"]
+      }
+    ]
+  },
+  "channels": {
+    "discord": {
+      "enabled": true,
+      "token": "YOUR_DISCORD_BOT_TOKEN_HERE",
+      "guilds": {
+        "YOUR_SERVER_ID_HERE": {
+          "channels": {
+            "ROMANIAN_CHANNEL_ID_HERE": {
+              "agent": "romanian"
+            },
+            "GERMAN_CHANNEL_ID_HERE": {
+              "agent": "german"
+            }
+          }
+        }
+      }
+    }
+  },
+  "session": {
+    "scope": "per-sender",
+    "resetTriggers": ["/new", "/reset"],
+    "reset": {
+      "mode": "daily",
+      "atHour": 4,
+      "idleMinutes": 10080
+    }
+  },
+  "cron": {
+    "enabled": true
+  },
+  "skills": {
+    "entries": {
+      "language-learning": { "enabled": true },
+      "conversation-partner": { "enabled": true }
+    }
+  }
+}

@@ -50,12 +50,12 @@ cron-stagger.js           Variable timing via date-hash slot selection
 
 1. Install OpenClaw: `npm i -g openclaw@latest`
 2. Create a Discord bot ([Developer Portal](https://discord.com/developers/applications))
-3. `cp .env.example .env` → fill in your Discord token, server/channel IDs, and Anthropic API key
+3. `cp .env.example .env` → fill in your Discord token, channel IDs, and choose your AI provider (Anthropic or OpenAI)
 4. `./setup.sh` → generates config and creates progress directories
 5. `openclaw skills install @chipagosfinest/language-learning --global`
 6. `openclaw gateway`
 
-See [setup-instructions.md](setup-instructions.md) for the full guide.
+See [setup-instructions.md](setup-instructions.md) for the full guide, including OpenAI ChatGPT subscription setup.
 
 ## How Engagement Works
 
@@ -86,7 +86,7 @@ Messages vary from day to day using date-hash slot selection (`cron-stagger.js`)
 ## Tech Stack
 
 - [OpenClaw](https://openclaw.ai) — self-hosted AI agent framework
-- [Anthropic Claude](https://console.anthropic.com) — Sonnet 4.6 (default model)
+- **AI Model** — configurable: Anthropic Claude (default) or OpenAI GPT via ChatGPT subscription or API key
 - [Discord](https://discord.com) — chat interface
 - [ClawHub](https://clawhub.ai) — `@chipagosfinest/language-learning` skill
 

@@ -48,7 +48,24 @@ missing=()
 [ -z "${DISCORD_SERVER_ID:-}" ]           && missing+=("DISCORD_SERVER_ID")
 [ -z "${DISCORD_ROMANIAN_CHANNEL_ID:-}" ] && missing+=("DISCORD_ROMANIAN_CHANNEL_ID")
 [ -z "${DISCORD_GERMAN_CHANNEL_ID:-}" ]   && missing+=("DISCORD_GERMAN_CHANNEL_ID")
-[ -z "${ANTHROPIC_API_KEY:-}" ]           && missing+=("ANTHROPIC_API_KEY")
+[ -z "${MODEL_PRIMARY:-}" ]               && MODEL_PRIMARY="anthropic/claude-sonnet-4-6"
+
+# Validate API key matches the chosen provider
+provider="${MODEL_PRIMARY%%/*}"
+case "$provider" in
+  anthropic)
+    [ -z "${ANTHROPIC_API_KEY:-}" ] && missing+=("ANTHROPIC_API_KEY (required for Anthropic models)")
+    ;;
+  openai)
+    if [ -z "${OPENAI_API_KEY:-}" ]; then
+      info "No OPENAI_API_KEY set — will use ChatGPT subscription auth"
+      info "  Run: openclaw models auth login --provider openai"
+    fi
+    ;;
+  *)
+    warn "Unknown provider: $provider — make sure it's configured in OpenClaw"
+    ;;
+esac
 
 if [ ${#missing[@]} -gt 0 ]; then
   error "Missing required values in .env:"
@@ -71,12 +88,22 @@ sed_replace "DISCORD_BOT_TOKEN" "$DISCORD_BOT_TOKEN"
 sed_replace "DISCORD_SERVER_ID" "$DISCORD_SERVER_ID"
 sed_replace "DISCORD_ROMANIAN_CHANNEL_ID" "$DISCORD_ROMANIAN_CHANNEL_ID"
 sed_replace "DISCORD_GERMAN_CHANNEL_ID" "$DISCORD_GERMAN_CHANNEL_ID"
+sed_replace "MODEL_PRIMARY" "$MODEL_PRIMARY"
 info "Generated openclaw.json"
+echo "    Model: $MODEL_PRIMARY"
 echo "    Discord token: set ✓"
 echo "    Server ID: $DISCORD_SERVER_ID"
 echo "    Romanian channel: $DISCORD_ROMANIAN_CHANNEL_ID"
 echo "    German channel: $DISCORD_GERMAN_CHANNEL_ID"
-echo "    Anthropic key: set ✓"
+if [ "$provider" = "anthropic" ]; then
+  echo "    Anthropic key: set ✓"
+elif [ "$provider" = "openai" ]; then
+  if [ -n "${OPENAI_API_KEY:-}" ]; then
+    echo "    OpenAI key: set ✓"
+  else
+    echo "    OpenAI auth: subscription (run 'openclaw models auth login --provider openai')"
+  fi
+fi
 
 # --- Create progress directories ---
 
@@ -215,8 +242,17 @@ echo "Next steps:"
 echo "  1. Install the language-learning skill:"
 echo "       openclaw skills install @chipagosfinest/language-learning --global"
 echo ""
-echo "  2. Start the gateway:"
-echo "       export ANTHROPIC_API_KEY=$ANTHROPIC_API_KEY"
+if [ "$provider" = "openai" ]; then
+  if [ -z "${OPENAI_API_KEY:-}" ]; then
+    echo "  2. Authenticate with your ChatGPT subscription:"
+    echo "       openclaw models auth login --provider openai"
+    echo ""
+  fi
+  echo "  $( [ -z "${OPENAI_API_KEY:-}" ] && echo "3" || echo "2" ). Start the gateway:"
+else
+  echo "  2. Start the gateway:"
+  echo "       export ANTHROPIC_API_KEY=$ANTHROPIC_API_KEY"
+fi
 echo "       openclaw gateway"
 echo ""
-echo "  3. Set up cron jobs (see setup-instructions.md)"
+echo "  $( [ "$provider" = "openai" ] && [ -z "${OPENAI_API_KEY:-}" ] && echo "4" || echo "3" ). Set up cron jobs (see setup-instructions.md)"

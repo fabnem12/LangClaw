@@ -13,7 +13,9 @@ Both connect through Discord and send proactive practice messages.
 - A machine to run OpenClaw 24/7 (Mac mini, Raspberry Pi, VPS, or always-on laptop)
 - Node.js 22+ (`node --version` to check)
 - A Discord account
-- An Anthropic API key (for Claude)
+- An AI provider account:
+  - **Anthropic**: API key from [console.anthropic.com](https://console.anthropic.com)
+  - **OpenAI**: ChatGPT Plus/Pro subscription OR API key from [platform.openai.com](https://platform.openai.com)
 
 ---
 
@@ -80,22 +82,60 @@ Copy the template and fill in your values:
 cp .env.example .env
 ```
 
-Edit `.env` with your actual values:
+Edit `.env` with your actual values. Here's what you need depending on your AI provider:
+
+### Option A: Anthropic (Claude) — default
 
 ```bash
-# Discord bot token (from Developer Portal → Bot → Reset Token)
+# Discord
 DISCORD_BOT_TOKEN=your-actual-bot-token
-
-# Discord server (guild) ID
 DISCORD_SERVER_ID=123456789012345678
-
-# Discord channel IDs
 DISCORD_ROMANIAN_CHANNEL_ID=123456789012345678
 DISCORD_GERMAN_CHANNEL_ID=123456789012345678
 
-# Anthropic API key (from console.anthropic.com)
+# Model
+MODEL_PRIMARY=anthropic/claude-sonnet-4-6
+
+# API key
 ANTHROPIC_API_KEY=sk-ant-...
 ```
+
+### Option B: OpenAI (GPT) — with ChatGPT subscription
+
+If you have a ChatGPT Plus or Pro subscription, you can use it directly — no separate API key needed:
+
+```bash
+# Discord
+DISCORD_BOT_TOKEN=your-actual-bot-token
+DISCORD_SERVER_ID=123456789012345678
+DISCORD_ROMANIAN_CHANNEL_ID=123456789012345678
+DISCORD_GERMAN_CHANNEL_ID=123456789012345678
+
+# Model
+MODEL_PRIMARY=openai/gpt-5.5
+```
+
+No API key needed. You'll authenticate with your OpenAI account in Step 7.
+
+### Option C: OpenAI (GPT) — with API key
+
+If you prefer per-token billing (or don't have a ChatGPT subscription):
+
+```bash
+# Discord
+DISCORD_BOT_TOKEN=your-actual-bot-token
+DISCORD_SERVER_ID=123456789012345678
+DISCORD_ROMANIAN_CHANNEL_ID=123456789012345678
+DISCORD_GERMAN_CHANNEL_ID=123456789012345678
+
+# Model
+MODEL_PRIMARY=openai/gpt-5.5
+
+# API key (from platform.openai.com/api-keys)
+OPENAI_API_KEY=sk-...
+```
+
+See the comments in `.env.example` for all available model options.
 
 ---
 
@@ -128,8 +168,31 @@ openclaw skills install @chipagosfinest/language-learning --global
 
 ## Step 8: Start OpenClaw
 
+### If using Anthropic
+
 ```bash
 export ANTHROPIC_API_KEY=$(grep ANTHROPIC_API_KEY .env | cut -d= -f2)
+openclaw gateway
+```
+
+### If using OpenAI with ChatGPT subscription
+
+First, authenticate with your OpenAI account (one-time):
+
+```bash
+openclaw models auth login --provider openai
+```
+
+This opens a browser where you log in with your OpenAI account. Then start the gateway:
+
+```bash
+openclaw gateway
+```
+
+### If using OpenAI with API key
+
+```bash
+export OPENAI_API_KEY=$(grep OPENAI_API_KEY .env | cut -d= -f2)
 openclaw gateway
 ```
 
@@ -216,10 +279,18 @@ openclaw logs --follow
 ## Customization
 
 ### Change the model
-Edit `openclaw.json` → `agents.defaults.model.primary`. Options:
+Edit `~/.openclaw/openclaw.json` → `agents.defaults.model.primary`, or update `MODEL_PRIMARY` in `.env` and re-run `./setup.sh`.
+
+**Anthropic:**
 - `anthropic/claude-sonnet-4-6` (default, good balance)
 - `anthropic/claude-opus-4-8` (best quality, more expensive)
 - `anthropic/claude-haiku-3-5` (cheaper, faster)
+
+**OpenAI:**
+- `openai/gpt-5.5` (standard, good balance)
+- `openai/gpt-5.6-sol` (flagship, most capable)
+- `openai/gpt-5.6-terra` (balanced, good cost/quality)
+- `openai/gpt-5.6-luna` (fast, lower cost)
 
 ### Adjust proactive schedule
 Edit the cron jobs:
@@ -256,6 +327,7 @@ Replace `Europe/Berlin` with your timezone in cron commands and HEARTBEAT.md.
 - Verify the agent is reading HEARTBEAT.md before sending
 
 ### Token costs too high
-- Switch to a cheaper model (Haiku)
+- Switch to a cheaper model (Haiku, GPT-5.6-luna)
+- If using OpenAI API key, consider switching to ChatGPT subscription auth
 - Reduce proactive message frequency by changing the cron schedule
 - Set shorter timeouts in `openclaw.json`

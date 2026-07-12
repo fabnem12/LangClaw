@@ -66,40 +66,59 @@ In your Discord server, create:
 Enable **Developer Mode** in Discord (User Settings → Developer → toggle on).
 
 Then:
-- Right-click server name → **Copy Server ID** → this is `YOUR_SERVER_ID`
-- Right-click `#romanian` → **Copy Channel ID** → this is `ROMANIAN_CHANNEL_ID`
-- Right-click `#german` → **Copy Channel ID** → this is `GERMAN_CHANNEL_ID`
+- Right-click server name → **Copy Server ID** → this is your server ID
+- Right-click `#romanian` → **Copy Channel ID** → this is your Romanian channel ID
+- Right-click `#german` → **Copy Channel ID** → this is your German channel ID
 
 ---
 
-## Step 5: Configure openclaw.json
+## Step 5: Configure Secrets
 
-Copy `openclaw.json` from this repo to `~/.openclaw/openclaw.json`:
+Copy the template and fill in your values:
 
 ```bash
-cp openclaw.json ~/.openclaw/openclaw.json
+cp .env.example .env
 ```
 
-Edit it and replace:
-1. `YOUR_DISCORD_BOT_TOKEN_HERE` → your bot token from Step 2
-2. `YOUR_SERVER_ID_HERE` → your server ID from Step 4
-3. `ROMANIAN_CHANNEL_ID_HERE` → the #romanian channel ID
-4. `GERMAN_CHANNEL_ID_HERE` → the #german channel ID
+Edit `.env` with your actual values:
+
+```bash
+# Discord bot token (from Developer Portal → Bot → Reset Token)
+DISCORD_BOT_TOKEN=your-actual-bot-token
+
+# Discord server (guild) ID
+DISCORD_SERVER_ID=123456789012345678
+
+# Discord channel IDs
+DISCORD_ROMANIAN_CHANNEL_ID=123456789012345678
+DISCORD_GERMAN_CHANNEL_ID=123456789012345678
+
+# Anthropic API key (from console.anthropic.com)
+ANTHROPIC_API_KEY=sk-ant-...
+```
 
 ---
 
-## Step 6: Set Up Workspaces
+## Step 6: Generate Config & Set Up Workspaces
+
+Run the setup script:
 
 ```bash
-# Copy workspaces
+./setup.sh
+```
+
+This reads `.env` and generates `openclaw.json` with your actual credentials. The generated file is gitignored and never committed.
+
+Then copy the workspaces:
+
+```bash
 cp -r workspace-romanian ~/.openclaw/workspace-romanian
 cp -r workspace-german ~/.openclaw/workspace-german
 ```
 
-Install the ClawHub language-learning skill into both workspaces:
+Install the ClawHub language-learning skill:
 
 ```bash
-# Install OpenClaw's workspace skill manager
 openclaw skills install @chipagosfinest/language-learning --global
 ```
 
@@ -108,6 +127,7 @@ openclaw skills install @chipagosfinest/language-learning --global
 ## Step 7: Start OpenClaw
 
 ```bash
+export ANTHROPIC_API_KEY=$(grep ANTHROPIC_API_KEY .env | cut -d= -f2)
 openclaw gateway
 ```
 
@@ -209,7 +229,7 @@ Replace `Europe/Berlin` with your timezone in cron commands and HEARTBEAT.md.
 
 ### Bot doesn't respond in Discord
 - Check that Message Content Intent is enabled in Developer Portal
-- Verify the bot token in `openclaw.json`
+- Verify the bot token in `.env` and re-run `./setup.sh`
 - Check `openclaw status` and `openclaw logs`
 
 ### Cron jobs don't fire

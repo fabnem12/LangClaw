@@ -33,14 +33,14 @@
   "channels": {
     "discord": {
       "enabled": true,
-      "token": "YOUR_DISCORD_BOT_TOKEN_HERE",
+      "token": "${DISCORD_BOT_TOKEN}",
       "guilds": {
-        "YOUR_SERVER_ID_HERE": {
+        "${DISCORD_SERVER_ID}": {
           "channels": {
-            "ROMANIAN_CHANNEL_ID_HERE": {
+            "${DISCORD_ROMANIAN_CHANNEL_ID}": {
               "agent": "romanian"
             },
-            "GERMAN_CHANNEL_ID_HERE": {
+            "${DISCORD_GERMAN_CHANNEL_ID}": {
               "agent": "german"
             }
           }

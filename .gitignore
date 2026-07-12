@@ -1,0 +1,23 @@
+# Secrets
+.env
+
+# Generated config (contains secrets)
+openclaw.json
+
+# Node
+node_modules/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Editor
+*.swp
+*.swo
+*~
+.vscode/
+.idea/
+
+# OpenClaw runtime data (progress files update at runtime)
+workspace-romanian/progress/
+workspace-german/progress/

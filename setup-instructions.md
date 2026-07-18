@@ -150,9 +150,8 @@ The setup script reads `.env`, generates `openclaw.json`, creates progress files
 The script will:
 1. Validate all required values in `.env`
 2. Generate `openclaw.json` from the template with your credentials
-3. Create initial progress files (vocabulary, engagement, grammar topics, etc.)
-4. Copy workspaces to `~/.openclaw/`
-5. Copy the shared conversation-partner skill to both workspaces
+3. Sync workspaces to `~/.openclaw/` (fresh install or update — preserves your user data)
+4. Inject persona content into SOUL.md (skipped if already injected)
 
 Generated files (`openclaw.json`, progress directories) are gitignored and never committed.
 
@@ -326,7 +325,7 @@ Replace `Europe/Berlin` with your timezone in cron commands and HEARTBEAT.md.
 - Verify the agent is reading HEARTBEAT.md before sending
 
 ### Token costs too high
-- Switch to a cheaper model (Haiku, GPT-5.6-luna)
+- Switch to a cheaper model (Haiku, GPT-5.4)
 - If using OpenAI API key, consider switching to ChatGPT subscription auth
 - Reduce proactive message frequency by changing the cron schedule
 - Set shorter timeouts in `openclaw.json`

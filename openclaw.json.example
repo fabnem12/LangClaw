@@ -46,13 +46,25 @@
       }
     }
   ],
+  "plugins": {
+    "entries": {
+      "discord": { "enabled": true }
+    }
+  },
   "channels": {
     "discord": {
       "enabled": true,
       "token": "${DISCORD_BOT_TOKEN}",
+      "replyToMode": "off",
+      "streaming": { "mode": "off" },
+      "groupPolicy": "open",
       "guilds": {
         "${DISCORD_SERVER_ID}": {
-          "channels": {
+          "requireMention": false,
+  "messages": {
+    "ackReactionScope": "off"
+  },
+  "channels": {
             "${DISCORD_ROMANIAN_CHANNEL_ID}": { "enabled": true },
             "${DISCORD_GERMAN_CHANNEL_ID}": { "enabled": true }
           }

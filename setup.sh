@@ -105,100 +105,54 @@ elif [ "$provider" = "openai" ]; then
   fi
 fi
 
-# --- Create progress directories ---
-
-create_progress() {
-  local dir="$1"
-  local lang="$2"
-  mkdir -p "$dir"
-
-  if [ ! -f "$dir/vocabulary.json" ]; then
-    cat > "$dir/vocabulary.json" <<EOF
-{
-  "language": "$lang",
-  "lastUpdated": null,
-  "words": []
-}
-EOF
-    info "Created $dir/vocabulary.json"
-  fi
-
-  if [ ! -f "$dir/engagement.json" ]; then
-    cat > "$dir/engagement.json" <<EOF
-{
-  "language": "$lang",
-  "lastUpdated": null,
-  "proactiveMessages": {
-    "morning":   { "sent": 0, "responded": 0, "avgResponseMin": 0 },
-    "midday":    { "sent": 0, "responded": 0, "avgResponseMin": 0 },
-    "afternoon": { "sent": 0, "responded": 0, "avgResponseMin": 0 },
-    "evening":   { "sent": 0, "responded": 0, "avgResponseMin": 0 }
-  },
-  "sessionPatterns": {
-    "totalSessions": 0,
-    "avgLengthMin": 0,
-    "preferredActivities": [],
-    "leastPreferred": [],
-    "peakEngagementHour": null,
-    "consecutiveIgnoredProactive": 0,
-    "longestStreak": 0,
-    "currentStreak": 0
-  },
-  "correctionTolerance": "medium",
-  "recentEngagementTrend": "unknown",
-  "lastAdaptation": null,
-  "adaptationHistory": []
-}
-EOF
-    info "Created $dir/engagement.json"
-  fi
-
-  if [ ! -f "$dir/conversation-log.jsonl" ]; then
-    touch "$dir/conversation-log.jsonl"
-    info "Created $dir/conversation-log.jsonl"
-  fi
-
-  if [ ! -f "$dir/streak.md" ]; then
-    cat > "$dir/streak.md" <<EOF
-# Practice Streak — $lang
-
-## Format
-Each line: \`YYYY-MM-DD | sessions: N | totalMin: N | activities: [list]\`
-
-## Log
-
-(no entries yet)
-EOF
-    info "Created $dir/streak.md"
-  fi
-
-  if [ ! -f "$dir/grammar-topics.json" ]; then
-    cat > "$dir/grammar-topics.json" <<EOF
-{
-  "language": "$lang",
-  "topics": []
-}
-EOF
-    info "Created $dir/grammar-topics.json"
-  fi
-}
-
-create_progress "$SCRIPT_DIR/workspace-romanian/progress" "Romanian"
-create_progress "$SCRIPT_DIR/workspace-german/progress" "German"
-
-# --- Copy workspaces to ~/.openclaw ---
+# --- Sync workspaces to ~/.openclaw ---
+#
+# Source workspaces (workspace-romanian/, workspace-german/) are the canonical
+# templates. They already contain progress files, skills, and SOUL.md with the
+# <!-- PERSONA --> marker. This step syncs them to ~/.openclaw/ and injects
+# persona content into SOUL.md.
 
 echo ""
-echo "Copying workspaces to $OPENCLAW_DIR..."
+echo "Syncing workspaces to $OPENCLAW_DIR..."
 
 mkdir -p "$OPENCLAW_DIR"
-cp -rn "$SCRIPT_DIR/workspace-romanian" "$OPENCLAW_DIR/" 2>/dev/null || warn "workspace-romanian already exists, skipping"
-cp -rn "$SCRIPT_DIR/workspace-german" "$OPENCLAW_DIR/" 2>/dev/null || warn "workspace-german already exists, skipping"
 
-# Copy shared skill file to both workspaces
-cp "$SCRIPT_DIR/skills/conversation-partner/SKILL.md" "$OPENCLAW_DIR/workspace-romanian/skills/conversation-partner/SKILL.md"
-cp "$SCRIPT_DIR/skills/conversation-partner/SKILL.md" "$OPENCLAW_DIR/workspace-german/skills/conversation-partner/SKILL.md"
-info "Copied shared SKILL.md to both workspaces"
+sync_workspace() {
+  local src="$SCRIPT_DIR/$1"
+  local dst="$OPENCLAW_DIR/$1"
+
+  if [ ! -d "$dst" ]; then
+    # Fresh install — copy everything
+    cp -r "$src" "$dst"
+    info "Installed $1 (fresh)"
+    return 0
+  else
+    # Existing workspace — update template files, preserve user data
+    # Sync SOUL.md, AGENTS.md, HEARTBEAT.md (template files)
+    for f in SOUL.md AGENTS.md HEARTBEAT.md MEMORY.md; do
+      if [ -f "$src/$f" ]; then
+        cp "$src/$f" "$dst/$f"
+      fi
+    done
+    # Sync shared skill
+    if [ -f "$src/skills/conversation-partner/SKILL.md" ]; then
+      mkdir -p "$dst/skills/conversation-partner"
+      cp "$src/skills/conversation-partner/SKILL.md" "$dst/skills/conversation-partner/SKILL.md"
+    fi
+    # Sync progress file templates (only if they don't exist — don't overwrite user data)
+    mkdir -p "$dst/progress"
+    for f in vocabulary.json engagement.json grammar-topics.json streak.md conversation-log.jsonl; do
+      if [ ! -f "$dst/progress/$f" ] && [ -f "$src/progress/$f" ]; then
+        cp "$src/progress/$f" "$dst/progress/$f"
+      fi
+    done
+    info "Updated $1 (preserved user data)"
+    return 0
+  fi
+}
+
+sync_workspace "workspace-romanian"
+sync_workspace "workspace-german"
 
 # --- Inject personas into SOUL.md ---
 
@@ -208,19 +162,27 @@ inject_persona() {
   local agent_name="$3"
   local soul_file="$OPENCLAW_DIR/$workspace/SOUL.md"
 
+  if [ ! -f "$soul_file" ]; then
+    warn "SOUL.md not found for $workspace — skipping persona injection"
+    return
+  fi
+
+  # Check if persona is already injected (marker is gone)
+  if ! grep -q '<!-- PERSONA -->' "$soul_file"; then
+    info "Persona already injected for $agent_name — skipping"
+    return
+  fi
+
   if [ -f "$persona_file" ]; then
-    # Create a temp file with the persona content (escaping special chars for sed)
     local tmp_persona
     tmp_persona=$(mktemp)
-    # Use awk to avoid sed escaping issues with special characters
     awk -v persona="$(cat "$persona_file")" '
       /<!-- PERSONA -->/ { print persona; next }
       { print }
     ' "$soul_file" > "$tmp_persona"
     mv "$tmp_persona" "$soul_file"
-    info "Injected persona into $workspace/SOUL.md"
+    info "Injected persona for $agent_name"
   else
-    # Replace marker with warning
     sed -i 's|<!-- PERSONA -->|<!-- WARNING: '"$persona_file"' not found. Create it to give '"$agent_name"' a rich identity. See docs/creating-personas.md for the format. -->|' "$soul_file"
     warn "Persona file not found: $persona_file"
     warn "  $agent_name will work without a personal identity."
@@ -231,28 +193,48 @@ inject_persona() {
 inject_persona "workspace-romanian" "$SCRIPT_DIR/personas/ana.md" "Ana"
 inject_persona "workspace-german" "$SCRIPT_DIR/personas/lukas.md" "Lukas"
 
-# Copy generated openclaw.json
+# --- Copy generated openclaw.json ---
+
 cp "$OUTPUT" "$OPENCLAW_DIR/openclaw.json"
 info "Copied openclaw.json to $OPENCLAW_DIR/"
+
+# --- Done ---
 
 echo ""
 info "Setup complete!"
 echo ""
 echo "Next steps:"
-echo "  1. Install the language-learning skill:"
+echo ""
+
+step=1
+
+echo "  $step. Install the language-learning skill:"
 echo "       openclaw skills install @chipagosfinest/language-learning --global"
 echo ""
-if [ "$provider" = "openai" ]; then
-  if [ -z "${OPENAI_API_KEY:-}" ]; then
-    echo "  2. Authenticate with your ChatGPT subscription:"
-    echo "       openclaw models auth login --provider openai"
-    echo ""
-  fi
-  echo "  $( [ -z "${OPENAI_API_KEY:-}" ] && echo "3" || echo "2" ). Start the gateway:"
-else
-  echo "  2. Start the gateway:"
-  echo "       export ANTHROPIC_API_KEY=$ANTHROPIC_API_KEY"
+
+if [ "$provider" = "openai" ] && [ -z "${OPENAI_API_KEY:-}" ]; then
+  step=$((step + 1))
+  echo "  $step. Authenticate with your ChatGPT subscription:"
+  echo "       openclaw models auth login --provider openai"
+  echo ""
+fi
+
+step=$((step + 1))
+echo "  $step. Start the gateway:"
+if [ "$provider" = "anthropic" ]; then
+  echo "       export ANTHROPIC_API_KEY=\$(grep ANTHROPIC_API_KEY .env | cut -d= -f2)"
+elif [ "$provider" = "openai" ] && [ -n "${OPENAI_API_KEY:-}" ]; then
+  echo "       export OPENAI_API_KEY=\$(grep OPENAI_API_KEY .env | cut -d= -f2)"
 fi
 echo "       openclaw gateway"
 echo ""
-echo "  $( [ "$provider" = "openai" ] && [ -z "${OPENAI_API_KEY:-}" ] && echo "4" || echo "3" ). Set up cron jobs (see setup-instructions.md)"
+
+step=$((step + 1))
+echo "  $step. Set up cron jobs for proactive messages:"
+echo "       See setup-instructions.md Step 10 for the exact commands."
+echo ""
+
+step=$((step + 1))
+echo "  $step. (Optional) Run as a systemd service for 24/7 uptime:"
+echo "       See setup-instructions.md for the systemd unit file."
+echo ""
